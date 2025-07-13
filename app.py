@@ -19,13 +19,15 @@ app = Flask(__name__)
 # WARNING: Storing API keys directly in code is NOT recommended for production environments.
 # For local development and personal use, it might be convenient.
 # For deployment, ALWAYS use environment variables or a secure secret management system.
-import os
-genai.configure(api_key=os.getenv("gemini_key"))
+# Correct environment variable loading
 
-if YOUR_GEMINI_API_KEY == "YOUR_ACTUAL_GEMINI_API_KEY_HERE" or YOUR_GEMINI_API_KEY.strip() == "":
-    print("\n--- ERROR: Gemini API Key Not Set in Code! ---")
-    print("Please replace 'YOUR_ACTUAL_GEMINI_API_KEY_HERE' with your actual Gemini API key in app.py.")
-    exit("Gemini API Key Missing. Exiting application.")
+GEMINI_API_KEY = os.getenv("gemini_key")
+genai.configure(api_key=GEMINI_API_KEY)
+
+if not GEMINI_API_KEY:
+    print("❌ Gemini API Key not found in environment. Set the 'gemini_key' variable in Render settings.")
+    exit(1)
+
 
 @app.route('/')
 def index():
