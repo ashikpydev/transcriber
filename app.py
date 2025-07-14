@@ -4,10 +4,12 @@ import google.generativeai as genai
 import time
 import shutil
 import io
+import re
 
 # For Word document generation
 from docx import Document
 
+# --- NO FFMPEG/PYDUB CONFIGURATION NEEDED ---
 
 app = Flask(__name__)
 
@@ -15,7 +17,7 @@ app = Flask(__name__)
 # WARNING: Storing API keys directly in code is NOT recommended for production environments.
 # For local development and personal use, it might be convenient.
 # For deployment, ALWAYS use environment variables or a secure secret management system.
-YOUR_GEMINI_API_KEY = os.environ.get("gemini_key") # <--- THIS IS THE CRUCIAL CHANGE
+YOUR_GEMINI_API_KEY = "ssssssssssssssss" # <--- PASTE YOUR GEMINI API KEY HERE!
 
 genai.configure(api_key=YOUR_GEMINI_API_KEY)
 
@@ -31,7 +33,12 @@ def index():
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe_audio():
-    """Handles the audio file upload, performs dual-language transcription, and returns the result."""
+    """
+    Handles the audio file upload, performs transcription based on language preference,
+    and returns the result.
+    """
+    selected_language = request.form.get('language', 'both') # Get selected language from form data
+
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file provided. Please select a file.'}), 400
 
@@ -60,8 +67,9 @@ def transcribe_audio():
         audio_file_storage.save(temp_input_audio_path)
         print(f"Uploaded audio saved locally to: {temp_input_audio_path}")
 
-        print("Attempting to transcribe the entire audio in a single API request using Gemini 2.5 Pro.")
+        print("Preparing audio for Gemini API...")
 
+        # Upload the entire audio to Gemini Files API ONCE
         audio_part = genai.upload_file(temp_input_audio_path)
         print(f"  Audio uploaded to Gemini Files API. File name: {audio_part.name}, current state: {audio_part.state.name}")
 
@@ -82,63 +90,68 @@ def transcribe_audio():
 
         model = genai.GenerativeModel('gemini-2.5-pro') 
 
-        # --- Bengali Transcription Prompt ---
-        prompt_bengali = """
-        This is an audio recording of a qualitative research interview (either a Key Informant Interview (KII) or In-Depth Interview (IDI)).
-        Please transcribe the entire audio into Bengali, including very detailed timestamps and speaker identification.
-        For speaker identification, use "Speaker A", "Speaker B", "Speaker C", etc.
-        Include timestamps at the beginning of each speaker's turn and whenever there's a significant pause or change in topic.
-        Also, provide minute-level timestamps at the start of each new minute mark (e.g., [00:01:00], [00:02:00]).
-        Pay extremely close attention to non-verbal cues and emotional states. If a speaker is crying, indicate it with "[কাঁদছে]" (crying). If they are smiling or laughing, indicate it with "[হাসছে]" (smiling/laughing). Also note other significant sounds like "[কাশি]" (coughing), "[নীরবতা]" (silence), "[অন্যান্য শব্দ]" (other sounds).
-        Ensure the transcription captures every single detail and nuance relevant for qualitative analysis.
+        bengali_transcription_text = ""
+        english_transcription_text = ""
 
-        Example output format:
-        [00:00:05] Speaker A: আপনি কেমন আছেন?
-        [00:00:10] Speaker B: আমি ভালো আছি, ধন্যবাদ। [হাসছে]
-        [00:00:15] Speaker A: আপনার গবেষণার বিষয় কি?
-        [00:00:22] Speaker B: (কিছুক্ষণ নীরবতা) এটি একটি জটিল বিষয়। [কাঁদছে]
-        [00:01:00] Speaker A: পরবর্তী প্রশ্ন...
-        """
+        # --- Conditional Transcription based on User Selection ---
+        if selected_language in ['bengali', 'both']:
+            prompt_bengali = """
+            This is an audio recording of a qualitative research interview (either a Key Informant Interview (KII) or In-Depth Interview (IDI)).
+            Please transcribe the entire audio into Bengali, including very detailed timestamps and speaker identification.
+            For speaker identification, use "Speaker A", "Speaker B", "Speaker C", etc.
+            Include timestamps at the beginning of each speaker's turn and whenever there's a significant pause or change in topic.
+            Also, provide minute-level timestamps at the start of each new minute mark (e.g., [00:01:00], [00:02:00]).
+            Pay extremely close attention to non-verbal cues and emotional states. If a speaker is crying, indicate it with "[কাঁদছে]" (crying). If they are smiling or laughing, indicate it with "[হাসছে]" (smiling/laughing). Also note other significant sounds like "[কাশি]" (coughing), "[নীরবতা]" (silence), "[অন্যান্য শব্দ]" (other sounds).
+            Ensure the transcription captures every single detail and nuance relevant for qualitative analysis.
 
-        # --- English Transcription/Translation Prompt (ENHANCED for Contextualization & Storytelling) ---
-        prompt_english = """
-        This is an audio recording of a qualitative research interview (either a Key Informant Interview (KII) or In-Depth Interview (IDI)) conducted in Bengali.
-        Your task is to transcribe and translate the entire audio into **highly contextualized, natural-sounding English**, reflecting the conversational and storytelling style typical of in-depth qualitative interviews.
+            Example output format:
+            [00:00:05] Speaker A: আপনি কেমন আছেন?
+            [00:00:10] Speaker B: আমি ভালো আছি, ধন্যবাদ। [হাসছে]
+            [00:00:15] Speaker A: আপনার গবেষণার বিষয় কি?
+            [00:00:22] Speaker B: (কিছুক্ষণ নীরবতা) এটি একটি জটিল বিষয়। [কাঁদছে]
+            [00:01:00] Speaker A: পরবর্তী প্রশ্ন...
+            """
+            print("Sending Bengali transcription request to Gemini API...")
+            response_bengali = model.generate_content([prompt_bengali, audio_part])
+            bengali_transcription_text = response_bengali.text
+            print("Bengali transcription received.")
 
-        **Key Requirements:**
-        1.  **Narrative Flow & Naturalness:** Ensure the English translation reads coherently and naturally as spoken language, avoiding overly literal word-for-word translation. Prioritize idiomatic expressions and natural phrasing that captures the speaker's original intent and emotional tone.
-        2.  **Contextual Understanding:** Analyze the entire audio to understand the broader context of the conversation. Use this understanding to contextualize responses, making the English transcription a fluid and analytically useful narrative for qualitative research.
-        3.  **Detailed Timestamps:** Include very precise timestamps at the beginning of each speaker's turn, significant pauses, or topic shifts. Also, include minute-level timestamps (e.g., [00:01:00], [00:02:00]).
-        4.  **Speaker Identification:** Use clear labels like "Speaker A", "Speaker B", "Speaker C", etc.
-        5.  **Non-Verbal & Emotional Cues:** Pay close attention to and transcribe relevant non-verbal cues and emotional states in English, such as:
-            * [Crying] or [Sobbing]
-            * [Smiling] or [Laughing]
-            * [Coughing]
-            * [Silence] or [Pause]
-            * [Other sounds] (e.g., [Door opens], [Phone rings])
+        if selected_language in ['english', 'both']:
+            prompt_english = """
+            This is an audio recording of a qualitative research interview (either a Key Informant Interview (KII) or In-Depth Interview (IDI)) conducted in Bengali.
+            Your task is to provide a **COMPLETE AND EXHAUSTIVE TRANSCRIPTION AND TRANSLATION** of the entire audio into English.
 
-        The aim is to provide a rich, narrative English transcript that facilitates deep qualitative analysis, preserving the essence and nuance of the original Bengali interview.
+            **CRITICAL REQUIREMENTS FOR COMPLETENESS:**
+            1.  **DO NOT SKIP ANY CONTENT:** Transcribe and translate every single spoken word, phrase, and utterance from the audio. Ensure the English output covers the *entire duration* of the original Bengali audio.
+            2.  **NO SUMMARIZATION OR TRUNCATION:** Do not summarize, condense, or cut off any part of the conversation. Every detail, no matter how minor, must be present in the English output.
+            3.  **Maintain Full Context:** Leverage the full audio context to provide a natural-sounding and highly contextualized English narrative. The English should flow as a coherent story, but without sacrificing any original content.
+            4.  **Detailed Timestamps:** Include very precise timestamps at the beginning of each speaker's turn, significant pauses, or topic shifts. Also, include minute-level timestamps (e.g., [00:01:00], [00:02:00]).
+            5.  **Speaker Identification:** Use clear labels like "Speaker A", "Speaker B", "Speaker C", etc.
+            6.  **Non-Verbal & Emotional Cues:** Pay extremely close attention to and transcribe relevant non-verbal cues and emotional states in English, such as:
+                * [Crying] or [Sobbing]
+                * [Smiling] or [Laughing]
+                * [Coughing]
+                * [Silence] or [Pause]
+                * [Other sounds] (e.g., [Door opens], [Phone rings])
 
-        Example output format:
-        [00:00:05] Speaker A: How are you doing today?
-        [00:00:10] Speaker B: I'm doing quite well, thank you very much. [Smiling]
-        [00:00:15] Speaker A: Could you elaborate on your research topic?
-        [00:00:22] Speaker B: (A brief silence) Well, it's quite a complex subject, actually. [Crying]
-        [00:01:00] Speaker A: Moving on to the next question...
-        """
+            The goal is to produce an English transcript that is both comprehensive for qualitative analysis and reads naturally, matching the full length and detail of the original Bengali audio.
+
+            Example output format:
+            [00:00:05] Speaker A: How are you doing today?
+            [00:00:10] Speaker B: I'm doing quite well, thank you very much. [Smiling]
+            [00:00:15] Speaker A: Could you elaborate on your research topic?
+            [00:00:22] Speaker B: (A brief silence) Well, it's quite a complex subject, actually. [Crying]
+            [00:01:00] Speaker A: Moving on to the next question...
+            """
+            print("Sending English transcription request to Gemini API...")
+            response_english = model.generate_content([prompt_english, audio_part])
+            english_transcription_text = response_english.text
+            print("English transcription received.")
         
-        print("Sending Bengali transcription request to Gemini API...")
-        response_bengali = model.generate_content([prompt_bengali, audio_part])
-        print("Bengali transcription received.")
-
-        print("Sending English transcription request to Gemini API...")
-        response_english = model.generate_content([prompt_english, audio_part])
-        print("English transcription received.")
-        
-        # Return both transcriptions in the JSON response
+        # Return both transcriptions (even if one is empty string)
         return jsonify({
-            'bengali_transcription': response_bengali.text,
-            'english_transcription': response_english.text
+            'bengali_transcription': bengali_transcription_text,
+            'english_transcription': english_transcription_text
         })
 
     except Exception as e:
@@ -171,10 +184,9 @@ def transcribe_audio():
     
     return jsonify({'error': 'An unexpected error occurred during file handling or an unhandled state.'}), 500
 
-# --- New Route for Bengali Word Document Download ---
+# --- Routes for Word Document Downloads (Separate Files) ---
 @app.route('/download_bengali_docx', methods=['POST'])
 def download_bengali_docx():
-    """Receives Bengali transcription text and generates a Word document for download."""
     bengali_text = request.json.get('transcription', '')
     
     if not bengali_text:
@@ -185,24 +197,22 @@ def download_bengali_docx():
     
     lines_bengali = bengali_text.split('\n')
     for line in lines_bengali:
-        if line.strip(): # Avoid adding empty paragraphs for blank lines
+        if line.strip():
             document.add_paragraph(line.strip())
 
     file_stream = io.BytesIO()
     document.save(file_stream)
-    file_stream.seek(0) # Rewind the stream to the beginning for reading
+    file_stream.seek(0)
 
     return send_file(
         file_stream,
         mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         download_name='bengali_transcription.docx',
-        as_attachment=True # Forces download rather than displaying in browser
+        as_attachment=True
     )
 
-# --- New Route for English Word Document Download ---
 @app.route('/download_english_docx', methods=['POST'])
 def download_english_docx():
-    """Receives English transcription text and generates a Word document for download."""
     english_text = request.json.get('transcription', '')
     
     if not english_text:
