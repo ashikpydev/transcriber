@@ -9,19 +9,10 @@ import re
 # For Word document generation
 from docx import Document
 
-# --- NO FFMPEG/PYDUB CONFIGURATION NEEDED ---
-# All pydub-related imports, FFmpeg_PATH, FFPROBE_PATH, and AudioSegment usage are removed.
-# This eliminates any local dependencies on FFmpeg.
-
 app = Flask(__name__)
 
 # --- Gemini API Key Configuration ---
-# WARNING: Storing API keys directly in code is NOT recommended for production environments.
-# For local development and personal use, it might be convenient.
-# For deployment, ALWAYS use environment variables or a secure secret management system.
-# Correct environment variable loading
-
-GEMINI_API_KEY = os.getenv("gemini_key")
+GEMINI_API_KEY = "AIzaSyBm3_ONSAwe0WngYxURh0ATQ6LNsx5tWWo"
 genai.configure(api_key=GEMINI_API_KEY)
 
 if not GEMINI_API_KEY:
@@ -38,7 +29,8 @@ def index():
 def transcribe_audio():
     """
     Handles the audio file upload, performs transcription based on language preference,
-    and returns the result.
+    and returns the result. It can now also take an optional project background text file
+    to provide context for the transcription.
     """
     selected_language = request.form.get('language', 'both') # Get selected language from form data
 
@@ -52,6 +44,7 @@ def transcribe_audio():
     temp_dir = None
     audio_part = None
     temp_input_audio_path = None
+    temp_background_path = None # Added for background file cleanup
 
     try:
         request_id = int(time.time()) 
@@ -69,6 +62,17 @@ def transcribe_audio():
         temp_input_audio_path = os.path.join(temp_dir, f"input_audio{extension}")
         audio_file_storage.save(temp_input_audio_path)
         print(f"Uploaded audio saved locally to: {temp_input_audio_path}")
+
+        # --- Handle optional background file ---
+        project_background_text = ""
+        if 'background_file' in request.files and request.files['background_file'].filename != '':
+            background_file_storage = request.files['background_file']
+            temp_background_path = os.path.join(temp_dir, "project_background.txt")
+            background_file_storage.save(temp_background_path)
+            with open(temp_background_path, 'r', encoding='utf-8') as f:
+                project_background_text = f.read()
+            print(f"Loaded project background from: {temp_background_path}")
+        # --- End background file handling ---
 
         print("Attempting to transcribe the entire audio in a single API request using Gemini 2.5 Pro.")
 
@@ -96,9 +100,9 @@ def transcribe_audio():
         bengali_transcription_text = ""
         english_transcription_text = ""
 
-        # --- Conditional Transcription based on User Selection ---
+        # --- Conditional Transcription based on User Selection and Contextualization ---
         if selected_language in ['bengali', 'both']:
-            prompt_bengali = """
+            base_prompt_bengali = """
             This is an audio recording of a qualitative research interview (either a Key Informant Interview (KII) or In-Depth Interview (IDI)).
             Please transcribe the entire audio into Bengali, including very detailed timestamps and speaker identification.
             For speaker identification, use "Speaker A", "Speaker B", "Speaker C", etc.
@@ -110,17 +114,31 @@ def transcribe_audio():
             Example output format:
             [00:00:05] Speaker A: আপনি কেমন আছেন?
             [00:00:10] Speaker B: আমি ভালো আছি, ধন্যবাদ। [হাসছে]
-            [00:00:15] Speaker A: আপনার গবেষণার বিষয় কি?
-            [00:00:22] Speaker B: (কিছুক্ষণ নীরবতা) এটি একটি জটিল বিষয়। [কাঁদছে]
+            [00:00:15] Speaker A: আপনার গবেষণার বিষয় কি?
+            [00:00:22] Speaker B: (কিছুক্ষণ নীরবতা) এটি একটি জটিল বিষয়। [কাঁদছে]
             [00:01:00] Speaker A: পরবর্তী প্রশ্ন...
             """
+            
+            prompt_bengali = base_prompt_bengali
+            if project_background_text:
+                prompt_bengali = f"""
+                PROJECT BACKGROUND INFORMATION (for context and terminology):
+                ---
+                {project_background_text}
+                ---
+
+                Now, process the audio based on the following instructions:
+
+                {base_prompt_bengali}
+                """
+
             print("Sending Bengali transcription request to Gemini API...")
             response_bengali = model.generate_content([prompt_bengali, audio_part])
             bengali_transcription_text = response_bengali.text
             print("Bengali transcription received.")
 
         if selected_language in ['english', 'both']:
-            prompt_english = """
+            base_prompt_english = """
             This is an audio recording of a qualitative research interview (either a Key Informant Interview (KII) or In-Depth Interview (IDI)) conducted in Bengali.
             Your task is to provide a **COMPLETE AND EXHAUSTIVE TRANSCRIPTION AND TRANSLATION** of the entire audio into English.
 
@@ -146,6 +164,20 @@ def transcribe_audio():
             [00:00:22] Speaker B: (A brief silence) Well, it's quite a complex subject, actually. [Crying]
             [00:01:00] Speaker A: Moving on to the next question...
             """
+            
+            prompt_english = base_prompt_english
+            if project_background_text:
+                prompt_english = f"""
+                PROJECT BACKGROUND INFORMATION (for context and terminology):
+                ---
+                {project_background_text}
+                ---
+
+                Now, process the audio based on the following instructions:
+
+                {base_prompt_english}
+                """
+
             print("Sending English transcription request to Gemini API...")
             response_english = model.generate_content([prompt_english, audio_part])
             english_transcription_text = response_english.text
@@ -169,6 +201,13 @@ def transcribe_audio():
                 print(f"Cleaned up local temporary input audio file: {temp_input_audio_path}")
             except Exception as cleanup_e:
                 print(f"WARNING: Error deleting temporary input audio file {temp_input_audio_path}: {cleanup_e}")
+        
+        if temp_background_path and os.path.exists(temp_background_path): # Cleanup background file
+            try:
+                os.remove(temp_background_path)
+                print(f"Cleaned up local temporary background file: {temp_background_path}")
+            except Exception as cleanup_e:
+                print(f"WARNING: Error deleting temporary background file {temp_background_path}: {cleanup_e}")
 
         if temp_dir and os.path.exists(temp_dir):
             try:
