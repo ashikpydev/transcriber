@@ -3,196 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>dRi Dual Language Audio Transcriber</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+    <title>Dual Language Audio Transcriber</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f6f8f9;
+            margin: 20px;
+            background-color: #f4f4f4;
             color: #333;
-            padding: 20px;
         }
         .container {
-            max-width: 960px;
+            max-width: 900px; /* Wider container to accommodate two columns */
             margin: 0 auto;
             background-color: #fff;
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
             text-align: center;
-            color: #9d1c20; /* Updated to match dRi's red logo */
-            margin-bottom: 10px;
+            color: #0056b3;
+            margin-bottom: 30px;
         }
-        .subtext {
-            text-align: center;
-            font-size: 0.9rem;
-            color: #555;
-            margin-bottom: 25px;
-        }
-        .org-logo {
+        input[type="file"] {
             display: block;
-            max-height: 60px;
-            margin: 0 auto 10px;
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: calc(100% - 22px);
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap; /* Allow buttons to wrap to next line if space is limited */
+            justify-content: center;
+            gap: 15px; /* Space between buttons */
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .export-button { /* Common style for export buttons */
+            background-color: #28a745; /* Green color for export button */
+        }
+        .export-button:hover {
+            background-color: #218838;
+        }
+        .transcription-columns {
+            display: flex;
+            gap: 20px; /* Space between the two transcription columns */
+            margin-top: 30px;
+        }
+        .transcription-column {
+            flex: 1; /* Each column takes equal width */
+        }
+        .transcription-column h2 {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 10px;
         }
         .transcription-result-box {
             padding: 15px;
-            background-color: #f1f3f5;
+            background-color: #e9ecef;
             border: 1px solid #dee2e6;
-            border-radius: 6px;
+            border-radius: 4px;
             min-height: 250px;
             max-height: 600px;
             overflow-y: auto;
             white-space: pre-wrap;
             text-align: left;
         }
-        .transcription-columns {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 30px;
-        }
-        .transcription-column {
-            flex: 1;
-            min-width: 300px;
-        }
         #loading {
             text-align: center;
             margin-top: 20px;
-            display: none;
-        }
-        .btn-primary {
-            background-color: #9d1c20;
-            border-color: #9d1c20;
-        }
-        .btn-primary:hover {
-            background-color: #841419;
-            border-color: #841419;
-        }
-        .btn-success { /* For export buttons */
-            background-color: #28a745;
-            border-color: #28a745;
-        }
-        .btn-success:hover {
-            background-color: #218838;
-            border-color: #218838;
-        }
-        small {
-            font-size: 0.85em;
+            font-style: italic;
             color: #666;
-            margin-top: 5px;
-            display: block;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <img src="https://dri-int.org/wp-content/uploads/2021/07/Logo.jpg" alt="dRi Logo" class="org-logo">
         <h1>Dual Language Audio Transcriber</h1>
-        <div class="subtext">An AI Research Tool by the Data Team at <strong>Development Research Initiative (dRi)</strong></div>
-
-        <div class="mb-4">
-            <label for="audioFile" class="form-label">Upload Audio File</label>
-            <input class="form-control" type="file" id="audioFile" accept="audio/*">
+        <input type="file" id="audioFile" accept="audio/*">
+        <div class="button-group">
+            <button onclick="transcribeAudio()">Transcribe Audio</button>
+            <button id="exportBengaliButton" class="export-button" onclick="exportBengaliToWord()" disabled>Export Bengali to Word</button>
+            <button id="exportEnglishButton" class="export-button" onclick="exportEnglishToWord()" disabled>Export English to Word</button>
         </div>
-
-        <div class="mb-4">
-            <label for="backgroundFile" class="form-label">Upload Project Background (Optional .txt file)</label>
-            <input class="form-control" type="file" id="backgroundFile" accept=".txt">
-            <small class="form-text text-muted">Providing project background can help the AI with contextual accuracy (e.g., specific terminology, project goals).</small>
-        </div>
-
-        <div class="mb-4">
-            <label for="languageSelect" class="form-label">Select Output Language(s)</label>
-            <select class="form-select" id="languageSelect">
-                <option value="both" selected>Both Bengali & English</option>
-                <option value="bengali">Bengali Only</option>
-                <option value="english">English Only</option>
-            </select>
-        </div>
-
-        <div class="d-flex flex-wrap justify-content-center gap-3 my-3">
-            <button class="btn btn-primary" onclick="transcribeAudio()">Transcribe Audio</button>
-            <button id="exportBengaliButton" class="btn btn-success" onclick="exportBengaliToWord()" disabled>Export Bengali</button>
-            <button id="exportEnglishButton" class="btn btn-success" onclick="exportEnglishToWord()" disabled>Export English</button>
-        </div>
-
-        <div id="loading" class="text-center my-3">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">Transcribing audio, please wait...<br>This may take several minutes for long files...</p>
-        </div>
-
+        <div id="loading">Transcribing audio, please wait... This may take several minutes for long files...</div>
+        
         <div class="transcription-columns">
             <div class="transcription-column">
-                <h5 class="text-center text-primary">Bengali Transcription (বাংলা প্রতিলিপি)</h5>
+                <h2>Bengali Transcription (বাংলা প্রতিলিপি)</h2>
                 <div id="bengaliTranscriptionResult" class="transcription-result-box"></div>
             </div>
             <div class="transcription-column">
-                <h5 class="text-center text-primary">English Transcription (ইংরেজি প্রতিলিপি)</h5>
+                <h2>English Transcription (ইংরেজি প্রতিলিপি)</h2>
                 <div id="englishTranscriptionResult" class="transcription-result-box"></div>
             </div>
         </div>
     </div>
 
-    <footer class="text-center text-muted mt-5">
-        <small>&copy; Ashiqur Rahman Rony</small>
-    </footer>
-
     <script>
+        // Get references to elements
         const exportBengaliButton = document.getElementById('exportBengaliButton');
         const exportEnglishButton = document.getElementById('exportEnglishButton');
         const bengaliTranscriptionResultDiv = document.getElementById('bengaliTranscriptionResult');
         const englishTranscriptionResultDiv = document.getElementById('englishTranscriptionResult');
         const loadingDiv = document.getElementById('loading');
         const audioFileInput = document.getElementById('audioFile');
-        const backgroundFileInput = document.getElementById('backgroundFile'); // New: Get background file input
-        const languageSelect = document.getElementById('languageSelect');
-
-        function updateExportButtonVisibility(bengaliAvailable, englishAvailable) {
-            exportBengaliButton.disabled = !bengaliAvailable;
-            exportEnglishButton.disabled = !englishAvailable;
-        }
 
         async function transcribeAudio() {
-            const audioFile = audioFileInput.files[0];
-            const backgroundFile = backgroundFileInput.files[0]; // New: Get background file
-            const selectedLanguage = languageSelect.value;
+            const file = audioFileInput.files[0];
 
-            if (!audioFile) {
+            if (!file) {
                 alert('Please select an audio file first.');
                 return;
             }
 
-            const MAX_AUDIO_FILE_SIZE_MB = 200;
-            if (audioFile.size > MAX_AUDIO_FILE_SIZE_MB * 1024 * 1024) {
-                alert(`Audio file size exceeds ${MAX_AUDIO_FILE_SIZE_MB}MB. Please select a smaller file.`);
-                return;
-            }
-            
-            const MAX_BACKGROUND_FILE_SIZE_KB = 500; // Limit background file size
-            if (backgroundFile && backgroundFile.size > MAX_BACKGROUND_FILE_SIZE_KB * 1024) {
-                alert(`Background text file size exceeds ${MAX_BACKGROUND_FILE_SIZE_KB}KB. Please select a smaller text file.`);
+            const MAX_FILE_SIZE_MB = 200; 
+            if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB. Please select a smaller file.`);
                 return;
             }
 
-            // Reset UI for new submission
+            // Show loading, clear previous results, disable export buttons
             loadingDiv.style.display = 'block';
             bengaliTranscriptionResultDiv.textContent = '';
             englishTranscriptionResultDiv.textContent = '';
-            updateExportButtonVisibility(false, false); // Disable all export buttons initially
+            exportBengaliButton.disabled = true;
+            exportEnglishButton.disabled = true;
 
             const formData = new FormData();
-            formData.append('audio', audioFile);
-            formData.append('language', selectedLanguage);
-            if (backgroundFile) { // Only append if a file is selected
-                formData.append('background_file', backgroundFile);
-            }
+            formData.append('audio', file);
 
             try {
                 const response = await fetch('/transcribe', {
@@ -203,33 +156,38 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    bengaliTranscriptionResultDiv.textContent = data.bengali_transcription || 'No Bengali transcription requested or available.';
-                    englishTranscriptionResultDiv.textContent = data.english_transcription || 'No English transcription requested or available.';
-
-                    // Enable buttons based on what was requested AND received
-                    const bengaliReceived = data.bengali_transcription && data.bengali_transcription.trim();
-                    const englishReceived = data.english_transcription && data.english_transcription.trim();
-                    updateExportButtonVisibility(bengaliReceived, englishReceived);
-
+                    // Display both transcriptions
+                    bengaliTranscriptionResultDiv.textContent = data.bengali_transcription || 'No Bengali transcription available.';
+                    englishTranscriptionResultDiv.textContent = data.english_transcription || 'No English transcription available.';
+                    
+                    // Enable export buttons if transcriptions are available
+                    if (data.bengali_transcription && data.bengali_transcription.trim()) {
+                        exportBengaliButton.disabled = false;
+                    }
+                    if (data.english_transcription && data.english_transcription.trim()) {
+                        exportEnglishButton.disabled = false;
+                    }
                 } else {
+                    // Display error in both boxes or specific error
                     const errorMessage = data.error || 'An unknown server error occurred.';
                     bengaliTranscriptionResultDiv.textContent = 'Error: ' + errorMessage;
                     englishTranscriptionResultDiv.textContent = 'Error: ' + errorMessage;
-                    updateExportButtonVisibility(false, false); // Keep disabled on error
+                    // Export buttons remain disabled
                 }
             } catch (error) {
-                const networkErrorMsg = 'Network error. Ensure the Flask server is running and you have a stable connection: ' + error.message;
+                const networkErrorMsg = 'A network error occurred. Please ensure the Flask server is running and your internet connection is stable: ' + error.message;
                 bengaliTranscriptionResultDiv.textContent = networkErrorMsg;
                 englishTranscriptionResultDiv.textContent = networkErrorMsg;
-                updateExportButtonVisibility(false, false); // Keep disabled on network error
+                // Export buttons remain disabled
             } finally {
                 loadingDiv.style.display = 'none';
             }
         }
 
+        // Generic function to handle Word exports for either language
         async function exportToWord(transcriptionText, endpoint, filename) {
-            if (!transcriptionText.trim() || transcriptionText.includes('No transcription requested or available.') || transcriptionText.includes('Error:')) {
-                alert('No valid transcription available to export. Please transcribe audio first.');
+            if (!transcriptionText.trim()) { // .trim() to check if it's just whitespace
+                alert('No transcription available to export. Please transcribe audio first.');
                 return;
             }
 
@@ -262,6 +220,7 @@
             }
         }
 
+        // Specific functions called by the export buttons
         function exportBengaliToWord() {
             exportToWord(
                 bengaliTranscriptionResultDiv.textContent,
