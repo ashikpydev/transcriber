@@ -17,7 +17,7 @@ app = Flask(__name__)
 # WARNING: Storing API keys directly in code is NOT recommended for production environments.
 # For local development and personal use, it might be convenient.
 # For deployment, ALWAYS use environment variables or a secure secret management system.
-YOUR_GEMINI_API_KEY = "ssssssssssssssss" # <--- PASTE YOUR GEMINI API KEY HERE!
+YOUR_GEMINI_API_KEY = "AIzaSyBm3_ONSAwe0WngYxURh0ATQ6LNsx5tWWo" # <--- PASTE YOUR GEMINI API KEY HERE!
 
 genai.configure(api_key=YOUR_GEMINI_API_KEY)
 
