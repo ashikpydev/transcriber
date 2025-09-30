@@ -1,7 +1,5 @@
 # 🎙️ AI-Powered Audio Transcriber: Bangla to English Verbatim Transcription
 
-![Project Banner](https://github.com/user-attachments/assets/bd99a318-d877-435d-9f53-9baf13523a72)
-
 [![Made with Flask](https://img.shields.io/badge/Made%20with-Flask-black?logo=flask)](https://flask.palletsprojects.com/)  
 [![Powered by Gemini 2.5 Pro](https://img.shields.io/badge/API-Gemini%202.5%20Pro-blue?logo=googlecloud)](https://deepmind.google/technologies/gemini/)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
