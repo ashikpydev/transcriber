@@ -21,6 +21,7 @@
 - [Project Structure](#-project-structure)
 - [Contributing](#-contributing)
 - [License](#-license)
+- [Acknowledgments](#-acknowledgments)
 
 ---
 
@@ -96,79 +97,36 @@ This hybrid approach ensures **accuracy, speed, and cost efficiency**.
 ### Steps
 
 1. **Clone the repository**
----
+   ```bash
    git clone https://github.com/ashikpydev/transcriber.git
    cd transcriber
----
-### Set up a virtual environment
----
-python -m venv venv
-source venv/bin/activate   # Mac/Linux
-venv\Scripts\activate      # Windows
----
-
-### Install dependencies
-
-pip install -r requirements.txt
----
-
-Configure your API key
+   ```
+2. **Set up a virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate   # Mac/Linux
+   venv\Scripts\activate      # Windows
+   ```
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. **Configure your API key**
 Add your Gemini key in a .env file:
+   ```bash
+   GEMINI_API_KEY=your_api_key_here
+   ```
+5. **Run the Flask application**
+   ```bash
+   python app.py
+   ```
+6. **Open the app in your browser**
+   ```bash
+   http://127.0.0.1:5000
+   ```   
 
-GEMINI_API_KEY=your_api_key_here
+## ⚠️ Limitations
 
-
-Run the Flask application
-
-python app.py
-
-
-Open the app in your browser
-
-http://127.0.0.1:5000
-
-▶️ Usage
-
-Upload a Bangla audio file (.mp3, .wav, etc.).
-
-The app calls Gemini 2.5 Pro to generate:
-
-Bangla verbatim transcript
-
-English translation
-
-Review the output, make corrections, and export for analysis.
-
-⚠️ Limitations
-
-AI transcripts achieve ~70–80% accuracy.
-
-Human review is necessary for context and final precision.
-
-Currently optimized for Bangla audio only.
-
-📂 Project Structure
-transcriber/
-│
-├── app.py              # Flask backend
-├── templates/          # Frontend HTML files
-├── static/             # CSS, JS, and assets
-├── requirements.txt    # Python dependencies
-└── README.md           # Project documentation
-
-🤝 Contributing
-
-Contributions, bug reports, and feature requests are welcome!
-Feel free to open an issue
- or submit a pull request.
-
-📜 License
-
-This project is licensed under the MIT License.
-See the LICENSE
- file for details.
-
-🌟 Acknowledgments
-
-Developed as part of a collaborative research project with Duncan Webb (Development Economist),
-funded by Princeton University.
+- AI transcripts achieve ~70–80% accuracy.
+- Human review is necessary for context and final precision.
+- Currently optimized for Bangla audio only.
